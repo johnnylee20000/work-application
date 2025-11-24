@@ -71,13 +71,38 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Pull and run container on host
+      - name: Deploy via docker-compose on host
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/work-application:latest
           DATA_DIR: ${{ secrets.DEPLOY_DATA_DIR }}
         run: |
-          # default DATA_DIR if not provided
           if [ -z "$DATA_DIR" ]; then
             DATA_DIR="/home/${{ secrets.DEPLOY_USER }}/work-application-data"
           fi
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "mkdir -p $DATA_DIR && docker pull $IMAGE && docker stop work-application || true && docker rm work-application || true && docker run -d --name work-application --restart unless-stopped -v $DATA_DIR:/app/data $IMAGE"
+          REMOTE_DIR="~/work-application-deploy"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "mkdir -p $DATA_DIR && mkdir -p $REMOTE_DIR"
+
+          # Login to GHCR on the remote host so private images can be pulled
+          if [ -n "${{ secrets.GHCR_USER }}" ] && [ -n "${{ secrets.GHCR_PAT }}" ]; then
+            echo "Logging in to GHCR on remote host"
+            ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "echo '${{ secrets.GHCR_PAT }}' | docker login ghcr.io -u '${{ secrets.GHCR_USER }}' --password-stdin"
+          else
+            echo "GHCR credentials not provided as secrets; assuming public image or host has auth already"
+          fi
+
+          # create docker-compose.yml on the host
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} 'cat > $REMOTE_DIR/docker-compose.yml <<"EOF"
+version: "3.8"
+services:
+  work-application:
+    image: ${IMAGE}
+    container_name: work-application
+    restart: unless-stopped
+    volumes:
+      - "'"$DATA_DIR"'":/app/data
+    environment:
+      - DB_PATH=/app/data/app.db
+EOF'
+
+          # pull and start with docker compose
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cd $REMOTE_DIR && docker compose pull && docker compose up -d"

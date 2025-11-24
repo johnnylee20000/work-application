@@ -96,6 +96,18 @@ Required secrets for automated deploy (set in repository -> Settings -> Secrets)
 Optional:
 - `DEPLOY_DATA_DIR` — path on the host to bind to `/app/data` (defaults to `/home/<DEPLOY_USER>/work-application-data`).
 
+If your GHCR image is private (the default for organization packages), add these additional secrets so the host can authenticate to GHCR before pulling:
+
+- `GHCR_USER` — your GitHub username or organization that owns the package.
+- `GHCR_PAT` — a Personal Access Token with the `read:packages` scope (and `write:packages` if you also push from CI).
+
+Create a GHCR PAT:
+
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) or the newer token UI.
+2. Create a token with at least `read:packages` (and `write:packages` if needed).
+3. Add the token value as a repository secret named `GHCR_PAT`, and set `GHCR_USER` to your GitHub username/org.
+
+
 Notes:
 - The workflow uses `GITHUB_TOKEN` to authenticate to GHCR for pushes. Ensure your org settings allow `GITHUB_TOKEN` package write if publishing to GHCR for org-owned repos.
 - The SSH deploy step assumes Docker is installed on the host and the `docker` CLI is available to the SSH user.

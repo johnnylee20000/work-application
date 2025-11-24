@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  work-application:
+    image: ghcr.io/<OWNER>/work-application:latest
+    container_name: work-application
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/app.db
+    ports: []

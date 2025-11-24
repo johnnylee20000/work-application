@@ -80,6 +80,38 @@ docker build -t work-application:latest .
 docker run --rm -v $(pwd)/data:/app/data work-application:latest python main.py run-scheduler --db data/app.db --drop data/drop --processed data/processed --failed data/failed --interval 1
 ```
 
+CI / Deploy
+
+This repository includes a GitHub Actions workflow at `.github/workflows/ci-deploy.yml` that will:
+
+- Run `pytest` on each push to `main`.
+- Build and push a Docker image to GitHub Container Registry (GHCR) as `ghcr.io/<OWNER>/work-application:latest` and a SHA-tagged image.
+- If the following repository Secrets are set, it will SSH to your host and deploy the latest image:
+
+Required secrets for automated deploy (set in repository -> Settings -> Secrets):
+- `DEPLOY_SSH_KEY` — private SSH key (no passphrase) with access to the deploy host.
+- `DEPLOY_HOST` — host IP or hostname where container will run.
+- `DEPLOY_USER` — username to SSH as on the host.
+
+Optional:
+- `DEPLOY_DATA_DIR` — path on the host to bind to `/app/data` (defaults to `/home/<DEPLOY_USER>/work-application-data`).
+
+Notes:
+- The workflow uses `GITHUB_TOKEN` to authenticate to GHCR for pushes. Ensure your org settings allow `GITHUB_TOKEN` package write if publishing to GHCR for org-owned repos.
+- The SSH deploy step assumes Docker is installed on the host and the `docker` CLI is available to the SSH user.
+
+Manual deploy alternative
+
+You can also deploy manually using the included `deploy/docker-compose.yml` (replace `<OWNER>` with your GitHub user/org and ensure `data/` is mounted):
+
+```bash
+scp deploy/docker-compose.yml deploy@your-host:~/work-application/docker-compose.yml
+ssh deploy@your-host 'mkdir -p ~/work-application/data'
+ssh deploy@your-host 'docker pull ghcr.io/<OWNER>/work-application:latest'
+ssh deploy@your-host 'cd ~/work-application && docker compose up -d'
+```
+
+
 
 Next steps
 

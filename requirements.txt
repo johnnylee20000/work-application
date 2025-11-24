@@ -1,0 +1,8 @@
+pandas
+openpyxl
+sqlalchemy
+schedule
+matplotlib
+python-dotenv
+
+pytest

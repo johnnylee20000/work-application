@@ -1,7 +1,8 @@
 version: '3.8'
 services:
   work-application:
-    image: ghcr.io/<OWNER>/work-application:latest
+    # Image published to GHCR for this repository owner
+    image: ghcr.io/johnnylee20000/work-application:latest
     container_name: work-application
     restart: unless-stopped
     volumes:
